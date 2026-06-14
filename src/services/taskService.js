@@ -88,6 +88,11 @@ const getTaskById = async (taskId, userId, role) => {
 };
 
 const createTask = async (taskData, userId) => {
+  if (taskData.status && taskData.status !== 'todo' && !taskData.assignee) {
+    const error = new Error('Task must be assigned to someone before changing its status.');
+    error.statusCode = 400;
+    throw error;
+  }
   return Task.create({ ...taskData, createdBy: userId });
 };
 
@@ -110,6 +115,14 @@ const updateTask = async (taskId, updateData, userId, role) => {
   if (role === 'member') {
     delete updateData.assignee;
     delete updateData.createdBy;
+  }
+
+  const newStatus = updateData.status !== undefined ? updateData.status : task.status;
+  const newAssignee = updateData.assignee !== undefined ? updateData.assignee : task.assignee;
+  if (updateData.status !== undefined && updateData.status !== task.status && !newAssignee) {
+    const error = new Error('Task must be assigned to someone before changing its status.');
+    error.statusCode = 400;
+    throw error;
   }
 
   Object.assign(task, updateData);
