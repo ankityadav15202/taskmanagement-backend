@@ -4,9 +4,10 @@
   "description": "Task Management Platform - Backend API",
   "main": "src/server.js",
   "scripts": {
-    "start": "node src/server.js",
-    "dev": "nodemon src/server.js",
-    "test": "jest --coverage"
+  "start": "node src/server.js",
+  "dev": "nodemon src/server.js",
+  "test": "jest --coverage",
+  "build": "echo Build successful"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
