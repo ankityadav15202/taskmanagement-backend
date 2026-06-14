@@ -126,6 +126,7 @@ http://localhost:5000/api/docs
 | GET | `/api/tasks/:id` | Get task by ID | ✅ |
 | PUT | `/api/tasks/:id` | Update task | ✅ |
 | DELETE | `/api/tasks/:id` | Soft delete task | ✅ |
+| GET | `/api/tasks/:id/history` | Get audit log / task history | ✅ |
 
 **Query params for GET /api/tasks:**
 - `search` — full-text search on title/description
@@ -197,6 +198,24 @@ http://localhost:5000/api/docs
 // Indexes: task + createdAt, author
 ```
 
+### Task History Collection
+```js
+{
+  task: ObjectId (ref: Task),
+  user: ObjectId (ref: User),
+  action: 'create' | 'update',
+  changes: [
+    {
+      field: String,
+      oldValue: Mixed,
+      newValue: Mixed
+    }
+  ],
+  createdAt: Date
+}
+// Indexes: task + createdAt
+```
+
 ---
 
 ## Architecture Decisions
@@ -209,13 +228,16 @@ Tasks and comments use `isDeleted: true` instead of hard deletes. A Mongoose `pr
 
 ### Role-Based Access
 - **Admin**: Full access to all tasks, users, assignments
-- **Member**: Can only see/update tasks they created or were assigned to
+- **Member**: Can only see/update tasks they created or were assigned to. Members are also permitted to list users and reassign tasks (but cannot modify the task creator `createdBy` field).
 
 ### JWT Authentication
 Stateless JWT tokens stored in the Authorization header (Bearer token). No sessions or cookies needed — works cleanly with SPAs and mobile apps.
 
 ### Pagination
 All list endpoints support `page` and `limit` query params and return `pagination` metadata in the response.
+
+### Swagger/OpenAPI Documentation
+Centralized OpenAPI specification resides in `src/config/swagger.js`. Route handler JSDoc tags have been cleaned up and unified into a single configuration file for maintenance and readability.
 
 ---
 
