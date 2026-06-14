@@ -115,9 +115,8 @@ const updateTask = async (taskId, updateData, userId, role) => {
     throw error;
   }
 
-  // Members cannot reassign tasks
+  // Members cannot change task creator
   if (role === 'member') {
-    delete updateData.assignee;
     delete updateData.createdBy;
   }
 

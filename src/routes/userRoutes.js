@@ -9,7 +9,7 @@ router.use(protect);
 
 router.get('/dashboard', getDashboard);
 
-router.get('/users', adminOnly, getAllUsers);
+router.get('/users', getAllUsers);
 
 router.patch('/users/:id/deactivate', adminOnly, deactivateUser);
 
