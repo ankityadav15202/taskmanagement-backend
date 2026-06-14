@@ -43,6 +43,13 @@ if (process.env.NODE_ENV === 'development') {
 }
 
 // ---- Swagger Docs ----
+app.use('/api/docs', (req, res, next) => {
+  res.setHeader(
+    "Content-Security-Policy",
+    "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'"
+  );
+  next();
+});
 app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
   customSiteTitle: 'Task Management API Docs',
 }));
