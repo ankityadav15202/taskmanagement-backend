@@ -10,7 +10,16 @@ const buildTaskQuery = (queryParams, userId, role) => {
   }
 
   if (search) {
-    filter.$text = { $search: search };
+    const searchRegex = { $regex: search, $options: 'i' };
+    if (filter.$or) {
+      filter.$and = [
+        { $or: filter.$or },
+        { $or: [{ title: searchRegex }, { description: searchRegex }] }
+      ];
+      delete filter.$or;
+    } else {
+      filter.$or = [{ title: searchRegex }, { description: searchRegex }];
+    }
   }
 
   if (status) filter.status = status;
