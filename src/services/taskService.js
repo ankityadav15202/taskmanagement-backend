@@ -1,4 +1,6 @@
 const Task = require('../models/Task');
+const User = require('../models/User');
+const historyService = require('./historyService');
 
 const buildTaskQuery = (queryParams, userId, role) => {
   const { search, status, priority, assignee, sortBy } = queryParams;
@@ -93,7 +95,9 @@ const createTask = async (taskData, userId) => {
     error.statusCode = 400;
     throw error;
   }
-  return Task.create({ ...taskData, createdBy: userId });
+  const task = await Task.create({ ...taskData, createdBy: userId });
+  await historyService.recordHistory(task._id, userId, 'create');
+  return task;
 };
 
 const updateTask = async (taskId, updateData, userId, role) => {
@@ -125,8 +129,75 @@ const updateTask = async (taskId, updateData, userId, role) => {
     throw error;
   }
 
+  const changes = [];
+
+  // 1. Title
+  if (updateData.title !== undefined && updateData.title !== task.title) {
+    changes.push({ field: 'title', oldValue: task.title, newValue: updateData.title });
+  }
+
+  // 2. Description
+  if (updateData.description !== undefined && updateData.description !== task.description) {
+    changes.push({ field: 'description', oldValue: task.description, newValue: updateData.description });
+  }
+
+  // 3. Status
+  if (updateData.status !== undefined && updateData.status !== task.status) {
+    changes.push({ field: 'status', oldValue: task.status, newValue: updateData.status });
+  }
+
+  // 4. Priority
+  if (updateData.priority !== undefined && updateData.priority !== task.priority) {
+    changes.push({ field: 'priority', oldValue: task.priority, newValue: updateData.priority });
+  }
+
+  // 5. Due Date
+  const oldDateStr = task.dueDate ? new Date(task.dueDate).toISOString().slice(0, 10) : null;
+  const newDateStr = updateData.dueDate ? new Date(updateData.dueDate).toISOString().slice(0, 10) : null;
+  if (updateData.dueDate !== undefined && oldDateStr !== newDateStr) {
+    changes.push({ field: 'dueDate', oldValue: oldDateStr, newValue: newDateStr });
+  }
+
+  // 6. Labels
+  if (updateData.labels !== undefined) {
+    const oldLabelsSorted = [...(task.labels || [])].sort().join(', ');
+    const newLabelsSorted = [...(updateData.labels || [])].sort().join(', ');
+    if (oldLabelsSorted !== newLabelsSorted) {
+      changes.push({
+        field: 'labels',
+        oldValue: task.labels?.length ? task.labels.join(', ') : null,
+        newValue: updateData.labels?.length ? updateData.labels.join(', ') : null,
+      });
+    }
+  }
+
+  // 7. Assignee
+  const oldAssigneeId = task.assignee?.toString() || null;
+  const newAssigneeId = updateData.assignee !== undefined ? (updateData.assignee?.toString() || null) : oldAssigneeId;
+  if (updateData.assignee !== undefined && oldAssigneeId !== newAssigneeId) {
+    const userIds = [];
+    if (oldAssigneeId) userIds.push(oldAssigneeId);
+    if (newAssigneeId) userIds.push(newAssigneeId);
+
+    let oldName = 'Unassigned';
+    let newName = 'Unassigned';
+
+    if (userIds.length > 0) {
+      const users = await User.find({ _id: { $in: userIds } });
+      const userMap = users.reduce((acc, u) => ({ ...acc, [u._id.toString()]: u.name }), {});
+      if (oldAssigneeId) oldName = userMap[oldAssigneeId] || 'Unknown User';
+      if (newAssigneeId) newName = userMap[newAssigneeId] || 'Unknown User';
+    }
+
+    changes.push({ field: 'assignee', oldValue: oldName, newValue: newName });
+  }
+
   Object.assign(task, updateData);
   await task.save();
+
+  if (changes.length > 0) {
+    await historyService.recordHistory(task._id, userId, 'update', changes);
+  }
 
   return Task.findById(taskId)
     .populate('assignee', 'name email avatar')

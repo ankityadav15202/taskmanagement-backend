@@ -2,6 +2,7 @@ const express = require('express');
 const { body, param, query } = require('express-validator');
 const { getTasks, getTask, createTask, updateTask, deleteTask } = require('../controllers/taskController');
 const { getComments, addComment, updateComment, deleteComment } = require('../controllers/commentController');
+const { getHistory } = require('../controllers/historyController');
 const { protect } = require('../middleware/auth');
 const validate = require('../middleware/validate');
 
@@ -153,6 +154,14 @@ router.delete(
   [param('id').isMongoId().withMessage('Invalid task ID')],
   validate,
   deleteTask
+);
+
+// ---- History Routes (nested under tasks) ----
+router.get(
+  '/:taskId/history',
+  [param('taskId').isMongoId().withMessage('Invalid task ID')],
+  validate,
+  getHistory
 );
 
 // ---- Comment Routes (nested under tasks) ----
